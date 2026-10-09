@@ -279,7 +279,8 @@ int oddParity(int x) {
  */
 int rotateRightBits(int x, int n) {
   int tail,logshift;
-  tail=x<<(32+((~n)+1));//取出尾部n个bits
+  n=n&31;//防止n大于31
+  tail=x<<((~n+1)&31);//取出尾部n个bits
   logshift=~((1<<31)>>n<<1);//用之前的逻辑位移
   x=(x>>n)&logshift;//将x右移并把头部清零空出位置
   return x|tail;
