@@ -146,7 +146,7 @@ NOTES:
  *   Rating: 1
  */
 int signMask(void) {
-  return 1;
+  return 1<<31;
 }
 
 // P2
@@ -158,7 +158,11 @@ int signMask(void) {
  *   Rating: 2
  */
 int bitXor(int x, int y) {
-	return 2;
+  int xt,yt,ans;
+  xt=(~x)&y;
+  yt=(~y)&x;
+  ans=~(~xt&~yt);
+	return ans;
 }
 
 // P3
@@ -170,7 +174,9 @@ int bitXor(int x, int y) {
  *   Rating: 3
  */
 int negativePart(int x){
-  return 3;
+  int sign;
+  sign=x>>31;//非负数为0，负数为-1
+  return sign&(~x+1);
 }
 
 
@@ -185,7 +191,13 @@ int negativePart(int x){
  *   Rating: 4
  */
 int copyByteWithin(int x, int src, int dst) {
-  return 4;
+  int a,b,c,d;
+  a=255<<(dst<<3);//构造掩码清零dst处的byte
+  d=~a&x;
+  b=x>>(src<<3);//构造掩码取出src处的byte
+  c=b&255;
+  c=c<<(dst<<3);//将src处byte位移到dst处
+  return c|d;
 }
 
 // P5
@@ -198,7 +210,9 @@ int copyByteWithin(int x, int src, int dst) {
  *   Rating: 4
  */
 int logicalShift(int x, int n) {
-  return 5;
+  int mask;
+  mask=~((1<<31)>>n<<1);//构造0x80000000，之后右移(n-1)位取反，得到目标位全0的掩码
+  return (x>>n&mask);
 }
 
 // P6
@@ -210,7 +224,13 @@ int logicalShift(int x, int n) {
  *   Rating: 4
  */
 int swapNibblePairs(int x) {
-  return 6;
+  int a,b,logshift,xa,xb;
+  a=(((((15<<8)+15)<<8)+15)<<8)+15;//构造0x0F0F0F0F
+  b=a<<4;//构造0xF0F0F0F0
+  xa=(x&a)<<4;
+  logshift=~((1<<31)>>4<<1);//借用上一题的逻辑位移
+  xb=(x&b)>>4&logshift;
+  return xa|xb;
 }
 
 // P7
@@ -223,7 +243,10 @@ int swapNibblePairs(int x) {
  *   Rating: 4
  */
 int secondLowestZeroBit(int x) {
-  return 7;
+  int y;
+  x=~x;
+  y=x&(x+(~0));//去掉最低位1
+  return y&(~y+1);//取出第二位的1
 }
 
 // P8
@@ -236,7 +259,13 @@ int secondLowestZeroBit(int x) {
  *   Rating: 5
  */
 int oddParity(int x) {
-  return 8;
+  int x1,x2,x3,x4,x5;
+  x1=(x^(x>>16));//异或的折叠不改变1个数的奇偶性，1^1=0,1^0=1
+  x2=(x1^(x1>>8));
+  x3=(x2^(x2>>4));
+  x4=(x3^(x3>>2));
+  x5=(x4^(x4>>1));
+  return !(x5&1);
 }
 
 // P9
@@ -249,7 +278,11 @@ int oddParity(int x) {
  *   Rating: 5
  */
 int rotateRightBits(int x, int n) {
-  return 9;
+  int tail,logshift;
+  tail=x<<(32+((~n)+1));//取出尾部n个bits
+  logshift=~((1<<31)>>n<<1);//用之前的逻辑位移
+  x=(x>>n)&logshift;//将x右移并把头部清零空出位置
+  return x|tail;
 }
 
 // P10
@@ -264,7 +297,11 @@ int rotateRightBits(int x, int n) {
  *   Rating: 5
  */
 int roundEvenPow2(int x, int n) {
-  return 10;
+  int q,r,t;
+  q=x>>n;//取出倍数
+  r=1<<(n+(~0));
+  t=x+r+(~0)+(q&1);//用2^(n-1)来进位，(q&1)考虑了q的奇偶性，为奇则+1，为偶则向下取整
+  return t>>n<<n;
 }
 
 // P11
@@ -280,9 +317,13 @@ int roundEvenPow2(int x, int n) {
  *   Rating: 5
  */
 int midpointTowardFirst(int x, int y) {
-  return 11;
+  int mid,mask,ans,p;
+  mid=(x&y)+((x^y)>>1);//将进位和/2直接融入一起算，以免溢出
+  p=((x^y)&1)+(~0);//x+y为奇则p=0，为偶数p=-1
+  mask=(((x>>31)^(y>>31))&1)+(~0);//x、y同号则mask=-1，异号则mask=0
+  ans=mid+(((mask&((x+(~y)+1)>>31)+1))  |  (~mask&((x>>31)+1)));//同号直接相减不会溢出，异号直接看x的正负
+  return (p&mid) | (~p)&ans;//x+y为偶数则不用再看ans
 }
-
 
 // P12
 /* 
@@ -294,7 +335,13 @@ int midpointTowardFirst(int x, int y) {
  *   Rating: 7
  */
 int isBetweenEitherOrder(int x, int a, int b) {
-  return 12;
+  int mask1,mask2,xa,xb,equal;
+  mask1=(((a>>31)^(x>>31))&1)+(~0);//x、a同号则mask1=-1，异号则mask1=0
+  mask2=(((b>>31)^(x>>31))&1)+(~0);//x、b同号则mask2=-1，异号则mask2=0
+  xa=(((mask1&((x+(~a)+1)>>31)+1))  |  (~mask1&((x>>31)+1)));//x>=a则xa=1,x<a则返回0
+  xb=(((mask2&((x+(~b)+1)>>31)+1))  |  (~mask2&((x>>31)+1)));//x>=b则xb=1,x<b则返回0
+  equal=((!(x^a))|(!(x^b)))+(~0);//针对相等的额外判断
+  return (equal&(xa^xb)) | ((~equal)&1);
 }
 
 // P13
@@ -307,7 +354,18 @@ int isBetweenEitherOrder(int x, int a, int b) {
  *   Rating: 7
  */
 int mul5Sat(int x) {
-  return 13;
+  int x1,x2,x3,full,overflow,overflow1,overflow2,overflow3,sign;
+  sign=x>>31;
+  full=((~sign)&(~(1<<31)))|(sign&(1<<31));
+  x1=x<<1;
+  overflow1=(x1^x)>>31;//x1有溢出变号，则overflow1=-1
+  x2=x1<<1;
+  overflow2=(x2^x)>>31;//x2有溢出变号，则overflow2=-1
+  x3=x2+x;
+  overflow3=(x3^x)>>31;//x3有溢出变号，则overflow3=-1
+  overflow=overflow1 | overflow2 | overflow3;
+
+  return ((~overflow)&x3) | (overflow&full);
 }
 
 // P14
@@ -320,7 +378,16 @@ int mul5Sat(int x) {
  *   Rating: 7
  */
 int classifyAdd3(int x, int y, int z) {
-  return 14;
+  int a,b,c,s1,s2,carry1,carry2,carry;
+  a=x^(1<<31);
+  b=y^(1<<31);
+  c=z^(1<<31);
+  s1=a+b;
+  carry1=(((a&b) | ((a|b)&(~s1)))>>31)&1;
+  s2=s1+c;
+  carry2=(((s1&c) | ((s1|c)&(~s2)))>>31)&1;
+  carry=carry1+carry2+(~0);
+  return carry;
 }
 
 // P15
@@ -337,7 +404,60 @@ int classifyAdd3(int x, int y, int z) {
  *   Rating: 7
  */
 unsigned floatScaleThreeHalves(unsigned uf) {
-  return 15;
+    unsigned sign, exp, frac;
+    unsigned m, scaled, q, r;
+    //提取符号位、exp和frac
+    sign=uf&0x80000000;
+    exp=(uf>>23)&0xFF;
+    frac=uf&0x7FFFFF;
+    //NaN和无穷大直接返回原值
+    if(exp==255)
+        return uf;
+    //非规格化数的处理
+    if(exp==0) {
+        //非规格化数没有隐藏的最高位1
+        //将尾数乘3，再除以2
+        scaled=frac*3;
+        q=scaled>>1;
+        // 除以2时采用向最近偶数舍入
+        if((scaled&1)&&(q&1))
+            q++;
+        // 如果尾数达到2^23，转为规格化数
+        if(q>=0x800000) {
+            exp=1;
+        }
+        return sign | (exp << 23) | (q & 0x7FFFFF);
+    }
+    // 规格化数处理
+    m=frac|0x800000;
+    scaled=m*3;
+    if(scaled >= 0x2000000) {
+        //结果的有效数值达到2，需要exp加1
+        exp++;
+        //恢复尾数范围
+        q=scaled>>2;
+        r=scaled&3;
+        //向最近偶数舍入
+        if(r>2 || (r==2&&(q&1)))
+            q++;
+    }
+    else{
+        //结果的有效数值小于2，exp不变
+        q=scaled>>1;
+        //向最近偶数舍入
+        if((scaled&1)&&(q&1))
+            q++;
+    }
+    //处理舍入导致的尾数进位
+    if(q>=0x1000000) {
+        q=q>>1;
+        exp++;
+    }
+    // exp溢出，返回对应符号的无穷大
+    if(exp>=255)
+        return sign | 0x7F800000;
+    // 重新组合符号位、exp和frac
+    return sign | (exp<<23) | (q&0x7FFFFF);
 }
 
 // P16
@@ -353,7 +473,27 @@ unsigned floatScaleThreeHalves(unsigned uf) {
  *   Rating: 10
  */
 unsigned floatRoundEven(unsigned uf) {
-  return 16;
+    unsigned sign,exp,frac,shift,mask,rest,half,mant;
+    sign=uf&0x80000000;
+    exp=(uf>>23)&0xFF;
+    frac=uf&0x7FFFFF;
+    if(exp>=150)  return uf;//已经是整数或NaN、无穷大
+    if(exp<126)  return sign;//绝对值小于0.5，保留符号位
+    if(exp==126)
+    {
+        if(frac)return sign|0x3F800000;//绝对值大于0.5，舍入为1
+        return sign;//恰好为0.5，舍入为0
+    }
+    shift=150-exp;//需要舍去的小数位数
+    mask=(1u<<shift)-1;
+    rest=frac&mask;//被舍去的部分
+    half=1u<<(shift-1);
+    mant=frac|0x800000;//补上隐藏的最高位1
+    uf=uf&(~mask);//先截去小数部分
+    //大于一半时进位，恰好一半时向偶数舍入
+    if(rest>half||(rest==half&&((mant>>shift)&1)))
+        uf=uf+(1u<<shift);
+    return uf;
 }
 
 // P17
@@ -367,9 +507,42 @@ unsigned floatRoundEven(unsigned uf) {
  *   Rating: 10
  */
 unsigned float_i2f(int x) {
-  return 17;
-}
+    unsigned sign=0,absx,exp,frac,remain,half;
+    int pos=31,shift;
+    if(x==0)  return 0;
+    absx=x;
+    if(x<0)
+    {
+        sign=0x80000000;
+        absx=~absx+1;//取绝对值，可正确处理INT_MIN
+    }
 
+    //寻找最高有效位1的位置
+    while(!((absx>>pos)&1))  pos--;
+    exp=pos+127;
+    if(pos<=23)
+    {
+        frac=(absx<<(23-pos))&0x7FFFFF;//左移补齐尾数
+    }
+    else
+    {
+        shift=pos-23;
+        frac=(absx>>shift)&0x7FFFFF;//保留最高24位中的低23位
+        remain=absx&((1u<<shift)-1);//被舍去的低位
+        half=1u<<(shift-1);
+        //向最近偶数舍入
+        if(remain>half||(remain==half&&(frac&1)))
+        {
+            frac++;
+            if(frac==0x800000)
+            {
+                frac=0;
+                exp++;//尾数进位导致阶码增加
+            }
+        }
+    }
+    return sign|(exp<<23)|frac;//组合符号位、exp和frac
+}
 
 
 // P18
@@ -381,7 +554,19 @@ unsigned float_i2f(int x) {
  *   Rating: 10
  */
 int bitCount(int x) {
-  return 18;
+  int mask1,mask2,mask3;
+  mask1=(0x55<<8)|0x55;
+  mask1=(mask1<<16) | mask1;//通过复制构造的方法减少操作数
+  x=(mask1&x)+((x>>1)&mask1);//拆解成低位加上高位，所得结果两位一分恰好为这两位含有1的个数
+  mask2=(0x33<<8)|0x33;
+  mask2=(mask2<<16)|mask2;
+  x=(mask2&x)+((x>>2)&mask2);//再进行一次2位一分，结果是四位一分，每四位的数值恰好为这四位含有1的个数
+  mask3=(0x0F<<8)|0x0F;
+  mask3=(mask3<<16)|mask3;
+  x=(x+(x>>4))&mask3;//此时最多有8个1，因此前四位没有用，可以少一次操作
+  x=x+(x>>8);
+  x=x+(x>>16);//这两次甚至连掩码都不需要构造，因为每次前半段的信息都没有用，最多只有32个1，也就是取出前6个bit即可
+  return x&0x3F;
 }
 
 // P19
@@ -395,5 +580,16 @@ int bitCount(int x) {
  */
 int bitReverse(int x)
 {
-  return 19;
+  int mask1,mask2,mask3,mask4,mask5;//每次交换一半，逐次交换完成
+  mask1=(0xFF<<8)+0x00FF;
+  x=(x<<16)+((x>>16)&mask1);//左移的时候不用&，因为低位一定为0
+  mask2=(mask1<<8)^mask1;//用先前的掩码进一步裂变，减少操作数
+  x=((x&mask2)<<8)+((x>>8)&mask2);
+  mask3=(mask2<<4)^mask2;
+  x=((x&mask3)<<4)+((x>>4)&mask3);
+  mask4=(mask3<<2)^mask3;
+  x=((x&mask4)<<2)+((x>>2)&mask4);
+  mask5=(mask4<<1)^mask4;
+  x=((x&mask5)<<1)+((x>>1)&mask5);
+  return x;
 }
